@@ -30,7 +30,7 @@ if (Test-Path "$SourceDir\Uninstall-Agent.ps1") {
 
 Write-Host "Installing Scheduled Task..."
 # Create scheduled task to run the agent every minute
-$RunCommand = "`"$DestDir\PortableApp.exe`" vid=303a pid=1001 cwd=`"$DestDir`""
+$RunCommand = "`"$DestDir\PortableApp.exe`" vid=cafe,303a pid=403f,1001 cwd=`"$DestDir`""
 schtasks /create /sc minute /mo 1 /tn $TaskName /tr $RunCommand /f
 
 Write-Host "Registering in Add/Remove Programs..."
@@ -45,7 +45,7 @@ $UninstallStr = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Fil
 New-ItemProperty -Path $RegPath -Name "UninstallString" -Value $UninstallStr -PropertyType String -Force | Out-Null
 
 Write-Host "Starting the Agent now..."
-Start-Process -FilePath "$DestDir\PortableApp.exe" -ArgumentList "vid=303a pid=1001 cwd=`"$DestDir`"" -WindowStyle Hidden
+Start-Process -FilePath "$DestDir\PortableApp.exe" -ArgumentList "vid=cafe,303a pid=403f,1001 cwd=`"$DestDir`"" -WindowStyle Hidden
 
 Write-Host "Agent deployed successfully! You can now view VNC in the Web UI."
 Read-Host -Prompt "Press Enter to exit"
