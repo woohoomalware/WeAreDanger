@@ -42,7 +42,7 @@ if (-Not (Test-Path $RegPath)) {
 New-ItemProperty -Path $RegPath -Name "DisplayName" -Value "USBArmyKnife Agent" -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $RegPath -Name "DisplayVersion" -Value "1.0.0" -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $RegPath -Name "Publisher" -Value "USBArmyKnife" -PropertyType String -Force | Out-Null
-$UninstallStr = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$DestDir\Uninstall-Agent.ps1`""
+$UninstallStr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"Get-Content -LiteralPath '$DestDir\Uninstall-Agent.ps1' -Raw | Invoke-Expression`""
 New-ItemProperty -Path $RegPath -Name "UninstallString" -Value $UninstallStr -PropertyType String -Force | Out-Null
 
 Write-Host "Starting the Agent now..."
