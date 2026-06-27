@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $SourceDir = $PSScriptRoot
+if ([string]::IsNullOrEmpty($SourceDir)) { $SourceDir = $PWD.Path }
 $DestDir = "$env:APPDATA\USBArmyKnifeAgent"
 
 if (-Not (Test-Path "$SourceDir\PortableApp.exe")) {
@@ -17,10 +18,11 @@ if (-Not (Test-Path $DestDir)) {
 
 Write-Host "Cleaning up old instances..."
 $TaskName = "USBArmyKnife Agent"
-schtasks /delete /tn $TaskName /f 2>$null
-schtasks /delete /tn "\Security Script" /f 2>$null
+cmd /c "schtasks /delete /tn `"$TaskName`" /f 2>nul"
+cmd /c "schtasks /delete /tn `"\Security Script`" /f 2>nul"
 Stop-Process -Name "PortableApp" -Force -ErrorAction SilentlyContinue
 Stop-Process -Name "rundll32" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
 
 Write-Host "Copying USBArmyKnife Agent to AppData..."
 Copy-Item -Path "$SourceDir\*.exe" -Destination $DestDir -Force
@@ -28,13 +30,12 @@ if (Test-Path "$SourceDir\Uninstall-Agent.ps1") {
     Copy-Item -Path "$SourceDir\Uninstall-Agent.ps1" -Destination $DestDir -Force
 }
 
-Write-Host "Installing Scheduled Task..."
-# Create scheduled task to run the agent every minute
-$RunCommand = "`"$DestDir\PortableApp.exe`" vid=cafe,303a pid=403f,1001 cwd=`"$DestDir`""
-schtasks /create /sc minute /mo 1 /tn $TaskName /tr $RunCommand /f
+Write-Host "Installing Startup Registry Key..."
+$RunVal = "`"$DestDir\PortableApp.exe`" vid=cafe,303a pid=403f,1001 cwd=`"$DestDir`""
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "USBArmyKnifeAgent" -Value $RunVal -Force
 
 Write-Host "Registering in Add/Remove Programs..."
-$RegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\USBArmyKnifeAgent"
+$RegPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\USBArmyKnifeAgent"
 if (-Not (Test-Path $RegPath)) {
     New-Item -Path $RegPath -Force | Out-Null
 }
